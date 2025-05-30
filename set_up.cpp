@@ -2,9 +2,14 @@
 #include <Windows.h>
 #include <conio.h> 
 
+#define CTRL_KEY(k) ((k) & 0x1f)
+
 HANDLE hStdin;
+HANDLE hStdout;
 DWORD fdwOldMode;
 DWORD fdwNewMode;
+CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+int counter = 0;
 
 void ErrorExit()
 {
@@ -57,22 +62,54 @@ void disableRowMode() {
 
 }
 
+void ascii(char c) {
+	int of = 0;
+	//function that will translate the text into ascii and print it one line under the text
+	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hStdout == INVALID_HANDLE_VALUE)
+		ErrorExit();
+
+	if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+		ErrorExit();
+
+
+	csbiInfo.dwCursorPosition.X = 70+ 5*(counter%5);
+	csbiInfo.dwCursorPosition.Y = 2 + (counter/5);//going 1 line down
+
+	if (!SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition))
+		ErrorExit();
+
+	std::cout << (int)c;//printing the ascii value
+
+	csbiInfo.dwCursorPosition.X = (counter%50);//after 10 character going 1 line below
+	csbiInfo.dwCursorPosition.Y = 2 + (counter / 50);//going 1 line up
+
+	if(!SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition))
+		ErrorExit();
+
+	counter += 1;
+}
 int main()
 {
 	enableRowMode();
 	std::cout << "\tpress control q to exit:\n";
 	char c;
 	while (true) {
-		if (GetAsyncKeyState(VK_CONTROL) & 0x8000 && GetAsyncKeyState('Q') & 0x8000) {
-			std::cout << "\n\tcontrol q has been pressed, exiting\n";
-			break;
-		}
-		if (_kbhit()){//check if no key is getting pressed
-			std::cin >> c;
-			std::cout << c;
+		std::cin >> c;
+		switch (c){
+			case CTRL_KEY('q'):
+				std::cout << "\n\texit\n";
+				goto finish;
+				break;
+			default:
+				ascii(c);
+				std::cout << c;
+				break;
 		}
 		Sleep(10);
 	}
+
+finish:
 	disableRowMode();
 	return 0;
 }
